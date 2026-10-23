@@ -1,0 +1,30 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: babylm-dev
+spec:
+  restartPolicy: Never
+  affinity:
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+          - matchExpressions:
+              - key: kubernetes.io/hostname
+                operator: NotIn
+                values: ["k8s-chase-ci-01.calit2.optiputer.net"]
+  containers:
+    - name: main
+      image: pytorch/pytorch:2.4.1-cuda12.1-cudnn9-runtime
+      command: ["sleep", "7200"]
+      envFrom:
+        - secretRef:
+            name: keys
+      resources:
+        requests:
+          cpu: "4"
+          memory: 16Gi
+          nvidia.com/gpu: 1
+        limits:
+          cpu: "4"
+          memory: 16Gi
+          nvidia.com/gpu: 1

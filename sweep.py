@@ -8,6 +8,7 @@ import sys
 import numpy as np
 import yaml
 
+PRECISION = os.environ.get("PRECISION", "16-mixed")
 USER = "seashello"
 ENTITY = os.environ.get("WANDB_ENTITY")  # unset = no W&B
 PROJECT = os.environ.get("WANDB_PROJECT", "babylm-sweep")
@@ -60,6 +61,7 @@ def make_cfg(i, lr, accum, sched):
         "monitoring": monitoring,
         "training": {
             "max_steps": max_steps,
+            "fabric": {"precision": PRECISION},
             "optimization": {
                 "lr": float(lr),
                 "lr_scheduler": sched,
