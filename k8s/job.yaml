@@ -29,8 +29,8 @@ spec:
             - { name: HF_USER, value: seashello }
             - { name: WANDB_ENTITY, value: models-uc-san-diego7270 }
             - { name: WANDB_PROJECT, value: babylm-sweep }
-            - { name: MB, value: "32" }
-            - { name: N_LAYERS, value: "12" }
+            - { name: MB, value: "8" }
+            - { name: N_LAYERS, value: "4" }
             - { name: PRECISION, value: "16-mixed" }
           command: ["bash", "-c"]
           args:

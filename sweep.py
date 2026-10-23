@@ -90,6 +90,10 @@ for i in range(N_RUNS):
     sched = str(rng.choice(["linear_with_warmup", "cosine_with_warmup"]))
     trials.append((i, lr, accum, sched))
 json.dump(trials, open("sweep_trials.json", "w"), indent=2)
+sel = os.environ.get("TRIALS")
+if sel:
+    lo, hi = map(int, sel.split("-"))
+    trials = [t for t in trials if lo <= t[0] <= hi]
 for t in trials:
     print(t, flush=True)
 
