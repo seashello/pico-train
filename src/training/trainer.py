@@ -328,7 +328,7 @@ class Trainer:
                 )
 
         # Handle checkpointing and final evaluation
-        if final_step % self.configs["checkpointing"].save_every_n_steps != 0:
+        if final_step not in self.save_steps:
             self.log(f"Step {final_step} -- 💾 Saving Final Checkpoint")
             save_checkpoint(
                 configs=self.configs,
@@ -571,7 +571,8 @@ class Trainer:
             #
             ########################################################
 
-            if batch_step % self.configs["checkpointing"].save_every_n_steps == 0:
+            if batch_step in self.save_steps:
+                self._run_validation(batch_step)
                 self.log(f"Step {batch_step} -- 💾 Saving Checkpoint")
                 save_checkpoint(
                     configs=self.configs,
@@ -655,6 +656,57 @@ class Trainer:
         self.log(f"├── Loss: {avg_loss:.4f}")
         self.log(f"├── Learning Rate: {self.lr_scheduler.get_last_lr()[0]:.2e}")
         self.log(f"└── Inf/NaN count: {gathered_interval_inf_or_nan_count}")
+
+    @property
+    def save_steps(self):
+        steps = self.configs["checkpointing"].save_steps
+        if not steps:
+            raise ValueError("Set checkpointing.save_steps in the config")
+        return set(int(s) for s in steps)
+
+    @torch.no_grad()
+    def _run_validation(self, batch_step):
+        import csv
+        import math
+
+        if getattr(self, "_val_ids", None) is None:
+            self._val_ids = load_dataset(
+                self.configs["data"].dataset.name, split="validation"
+            )["input_ids"]
+
+        self.model.eval()
+        total_nll = torch.tensor(0.0, device=self.fabric.device)
+        total_tokens = 0
+        bs = 16
+        for i in range(0, len(self._val_ids), bs):
+            batch = torch.tensor(self._val_ids[i : i + bs], device=self.fabric.device)
+            logits, _ = self.model(batch[:, :-1])
+            labels = batch[:, 1:]
+            total_nll += F.cross_entropy(
+                logits.float().transpose(1, 2), labels, reduction="sum"
+            )
+            total_tokens += labels.numel()
+        self.model.train()
+
+        val_loss = (total_nll / total_tokens).item()
+        val_ppl = math.exp(val_loss)
+
+        ckpt = self.configs["checkpointing"]
+        run_dir = os.path.join(ckpt.runs_dir, ckpt.run_name)
+        os.makedirs(run_dir, exist_ok=True)
+        path = os.path.join(run_dir, "val_ppl.csv")
+        is_new = not os.path.exists(path)
+        eff_bs = self.configs["data"].dataloader.batch_size
+        with open(path, "a", newline="") as f:
+            w = csv.writer(f)
+            if is_new:
+                w.writerow(["step", "samples_seen", "val_loss", "val_ppl"])
+            w.writerow(
+                [batch_step, batch_step * eff_bs, f"{val_loss:.6f}", f"{val_ppl:.4f}"]
+            )
+        self.fabric.log("val/perplexity", val_ppl, step=batch_step)
+        self.fabric.log("val/loss", val_loss, step=batch_step)
+        self.log(f"Step {batch_step} -- validation perplexity {val_ppl:.2f}")
 
     def _log_evaluation_results(
         self, evaluation_results: Dict[str, Any], batch_step: int

@@ -1,0 +1,8 @@
+{
+  "seq_len": 512,
+  "n_words_total": 10000000,
+  "n_tokens_total": 16550365,
+  "n_train_chunks": 30647,
+  "n_val_chunks": 1614,
+  "words_per_epoch": 9499705.526797062
+}

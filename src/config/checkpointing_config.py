@@ -80,6 +80,9 @@ class CheckpointingConfig:
     # How often to save checkpoints
     save_every_n_steps: int = 1000
 
+    # Explicit steps at which to checkpoint and validate (BabyLM schedule)
+    save_steps: Optional[List[int]] = None
+
     # Whether to save checkpoints to HuggingFace
     save_to_hf: Optional[bool] = False
     hf_checkpoint: HuggingFaceCheckpointingConfig = field(

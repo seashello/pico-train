@@ -478,6 +478,25 @@ def initialize_lr_scheduler(
             optimizer,
             lr_lambda,
         )
+    elif training_config.optimization.lr_scheduler == "cosine_with_warmup":
+        import math
+
+        def _cosine_lambda(curr_step, num_warmup_steps, max_steps):
+            if curr_step < num_warmup_steps:
+                return float(curr_step) / float(max(1, num_warmup_steps))
+            progress = float(curr_step - num_warmup_steps) / float(
+                max(1, max_steps - num_warmup_steps)
+            )
+            return max(0.0, 0.5 * (1.0 + math.cos(math.pi * progress)))
+
+        lr_scheduler = torch.optim.lr_scheduler.LambdaLR(
+            optimizer,
+            lambda step: _cosine_lambda(
+                step,
+                training_config.optimization.lr_warmup_steps,
+                training_config.max_steps,
+            ),
+        )
     else:
         raise ValueError(
             f"Invalid learning rate scheduler: {training_config.optimization.lr_scheduler}"
