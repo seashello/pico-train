@@ -3,7 +3,7 @@ kind: Job
 metadata:
   name: babylm-sweep
 spec:
-  backoffLimit: 2
+  backoffLimit: 6
   template:
     spec:
       restartPolicy: Never
@@ -14,7 +14,11 @@ spec:
               - matchExpressions:
                   - key: kubernetes.io/hostname
                     operator: NotIn
-                    values: ["k8s-chase-ci-01.calit2.optiputer.net"]
+                    values:
+                      [
+                        "k8s-chase-ci-01.calit2.optiputer.net",
+                        "nautilus-ext-gpu01.fullerton.edu",
+                      ]
       containers:
         - name: train
           image: pytorch/pytorch:2.5.1-cuda12.1-cudnn9-runtime
@@ -25,7 +29,7 @@ spec:
             - { name: HF_USER, value: seashello }
             - { name: WANDB_ENTITY, value: models-uc-san-diego7270 }
             - { name: WANDB_PROJECT, value: babylm-sweep }
-            - { name: MB, value: "48" }
+            - { name: MB, value: "32" }
             - { name: N_LAYERS, value: "12" }
             - { name: PRECISION, value: "16-mixed" }
           command: ["bash", "-c"]
@@ -37,8 +41,7 @@ spec:
               [ -d pico-train ] || git clone https://github.com/seashello/pico-train
               cd pico-train
               git pull
-              pip install lightning "transformers<4.50" "datasets<4" "huggingface_hub<1.0" evaluate click pyyaml safetensors omegaconf seaborn pandas numpy
-              pip install --upgrade wandb
+              pip install lightning "transformers<4.50" "datasets<4" "huggingface_hub<1.0" evaluate click pyyaml safetensors omegaconf seaborn pandas numpy rich tqdm psutil wandb                
               export PYTHONPATH=/vol/pico-train
               python -u sweep.py
           volumeMounts:
