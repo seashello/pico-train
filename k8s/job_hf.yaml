@@ -1,0 +1,56 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: babylm-sweep
+spec:
+  backoffLimit: 6
+  template:
+    spec:
+      restartPolicy: Never
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: kubernetes.io/hostname
+                    operator: NotIn
+                    values:
+                      [
+                        "k8s-chase-ci-01.calit2.optiputer.net",
+                        "nautilus-ext-gpu01.fullerton.edu",
+                      ]
+      containers:
+        - name: train
+          image: pytorch/pytorch:2.5.1-cuda12.1-cudnn9-runtime
+          envFrom:
+            - secretRef:
+                name: keys
+          env:
+            - { name: HF_USER, value: seashello }
+            - { name: WANDB_ENTITY, value: YOUR_REAL_WANDB_NAME }
+            - { name: WANDB_PROJECT, value: babylm-sweep-hf }
+            - { name: MB, value: "8" }
+            - { name: D_MODEL, value: "256" }
+            - { name: LAYERS, value: "6" }
+            - { name: PRECISION, value: "fp16" }
+            - { name: N_RUNS, value: "8" }
+          command: ["bash", "-c"]
+          args:
+            - |
+              set -e
+              apt-get update && apt-get install -y git
+              cd /vol
+              [ -d pico-train ] || git clone https://github.com/seashello/pico-train
+              cd pico-train
+              git pull
+              pip install "transformers==4.49.0" "datasets==3.6.0" "huggingface_hub==0.36.2" accelerate wandb numpy
+              python -u sweep_hf.py
+          volumeMounts:
+            - { name: vol, mountPath: /vol }
+          resources:
+            requests: { cpu: "4", memory: 16Gi, nvidia.com/gpu: 1 }
+            limits: { cpu: "4", memory: 16Gi, nvidia.com/gpu: 1 }
+      volumes:
+        - name: vol
+          persistentVolumeClaim:
+            claimName: babylm-vol
