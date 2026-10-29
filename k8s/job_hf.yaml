@@ -27,13 +27,13 @@ spec:
                 name: keys
           env:
             - { name: HF_USER, value: seashello }
-            - { name: WANDB_ENTITY, value: YOUR_REAL_WANDB_NAME }
+            - { name: WANDB_ENTITY, value: models-uc-san-diego7270 }
             - { name: WANDB_PROJECT, value: babylm-sweep-hf }
             - { name: MB, value: "8" }
             - { name: D_MODEL, value: "256" }
             - { name: LAYERS, value: "6" }
             - { name: PRECISION, value: "fp16" }
-            - { name: N_RUNS, value: "8" }
+            - { name: TRIALS, value: "0-8" }
           command: ["bash", "-c"]
           args:
             - |
@@ -42,7 +42,14 @@ spec:
               cd /vol
               [ -d pico-train ] || git clone https://github.com/seashello/pico-train
               cd pico-train
-              git pull
+
+              # Preserve the historical evaluation results outside the Git checkout
+              if [ -f sweep_val_ppl.csv ]; then
+                  mkdir -p /vol/historical_results
+                  mv sweep_val_ppl.csv "/vol/historical_results/sweep_val_ppl_$(date +%Y%m%d_%H%M%S).csv"
+              fi
+
+              git pull origin main
               pip install "transformers==4.49.0" "datasets==3.6.0" "huggingface_hub==0.36.2" accelerate wandb numpy
               python -u sweep_hf.py
           volumeMounts:

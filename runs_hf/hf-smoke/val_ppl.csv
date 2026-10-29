@@ -1,0 +1,4 @@
+run,step,samples_seen,words_seen,val_loss,val_ppl,lr,grad_accum,schedule
+hf-smoke,10,80,24798,9.780506,17685.6019,3.000e-04,1,cosine
+hf-smoke,20,160,49595,9.242495,10326.7674,3.000e-04,1,cosine
+hf-smoke,30,240,74393,9.126204,9193.0633,3.000e-04,1,cosine
