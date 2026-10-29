@@ -32,6 +32,7 @@ spec:
             - { name: MB, value: "8" }
             - { name: N_LAYERS, value: "4" }
             - { name: PRECISION, value: "16-mixed" }
+            - {name: TRIALS, value: "0-4"}
           command: ["bash", "-c"]
           args:
             - |

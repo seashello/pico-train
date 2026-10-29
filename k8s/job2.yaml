@@ -1,0 +1,56 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: babylm-sweep2
+spec:
+  backoffLimit: 6
+  template:
+    spec:
+      restartPolicy: Never
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: kubernetes.io/hostname
+                    operator: NotIn
+                    values:
+                      [
+                        "k8s-chase-ci-01.calit2.optiputer.net",
+                        "nautilus-ext-gpu01.fullerton.edu",
+                      ]
+      containers:
+        - name: train
+          image: pytorch/pytorch:2.5.1-cuda12.1-cudnn9-runtime
+          envFrom:
+            - secretRef:
+                name: keys
+          env:
+            - { name: HF_USER, value: seashello }
+            - { name: WANDB_ENTITY, value: models-uc-san-diego7270 }
+            - { name: WANDB_PROJECT, value: babylm-sweep }
+            - { name: MB, value: "8" }
+            - { name: N_LAYERS, value: "4" }
+            - { name: PRECISION, value: "16-mixed" }
+            - { name: TRIALS, value: "5-9" }
+          command: ["bash", "-c"]
+          args:
+            - |
+              set -e
+              apt-get update && apt-get install -y git
+              cd /vol
+              [ -d pico-train ] || git clone https://github.com/seashello/pico-train
+              cd pico-train
+              git pull
+              pip install lightning "transformers<4.50" "datasets<4" "huggingface_hub<1.0" evaluate click pyyaml safetensors omegaconf seaborn pandas numpy rich tqdm psutil wandb                
+              export PYTHONPATH=/vol/pico-train
+              python -u sweep.py
+          volumeMounts:
+            - { name: vol, mountPath: /vol }
+          resources:
+            requests: { cpu: "4", memory: 16Gi, nvidia.com/gpu: 1 }
+            limits: { cpu: "4", memory: 16Gi, nvidia.com/gpu: 1 }
+      volumes:
+        - name: vol
+          persistentVolumeClaim:
+            claimName: babylm-vol2
